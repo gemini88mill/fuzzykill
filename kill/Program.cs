@@ -1,4 +1,5 @@
 ﻿using System.CommandLine;
+using Spectre.Console;
 using kill;
 
 var query = new Argument<string>("query")
@@ -41,12 +42,16 @@ root.SetAction(parseResult =>
     var queryRes = parseResult.GetValue(query);
     if (queryRes == null) return 0;
 
-    var results = processManager.Discover(queryRes);
+    IEnumerable<ProcessWithUser> processWithUsers = [];
+    Logger.ShowStatus("Getting processes...", () => { processWithUsers = processManager.Discover(queryRes).ToList(); });
+    // var results = processManager.Discover(queryRes);
 
-    foreach (var process in results)
+    var selection = Logger.SelectProcesses(processWithUsers);
+    
+    Console.WriteLine($"Selected {selection.Count} processes.");
+    foreach (var item in selection)
     {
-        Console.WriteLine(
-            $"{process.Id} {process.ProcessName} {process.MainWindowTitle} {process.User} {process.Domain}");
+        Console.WriteLine(item.ProcessName);
     }
 
     return 0;

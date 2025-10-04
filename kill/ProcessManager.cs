@@ -10,10 +10,13 @@ namespace kill;
 public class ProcessManager
 {
     private readonly List<Process> _processes;
+    private readonly int _currentPid;
 
     public ProcessManager()
     {
         _processes = [];
+        _currentPid = -1;
+        try { _currentPid = Process.GetCurrentProcess().Id; } catch { /* ignore */ }
 
         Process[] list;
         try
@@ -37,6 +40,9 @@ public class ProcessManager
                 // Ignore processes we cannot access anymore
                 continue;
             }
+
+            // Exclude the current process so it doesn't match on its own command line args
+            if (_currentPid > 0 && p.Id == _currentPid) continue;
 
             _processes.Add(p);
         }
@@ -169,7 +175,6 @@ public class ProcessManager
 #pragma warning disable CA1416
             using var searcher = new ManagementObjectSearcher(
                 "SELECT CommandLine FROM Win32_Process WHERE ProcessId = " + pid);
-#pragma warning restore CA1416
             using var objects = searcher.Get();
             foreach (var o in objects)
             {
@@ -183,6 +188,8 @@ public class ProcessManager
         }
         return null;
     }
+#pragma warning restore CA1416
+
 
     private static T? SafeGet<T>(Func<T> getter)
     {
