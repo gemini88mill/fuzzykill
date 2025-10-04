@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Management;
 
@@ -11,7 +12,14 @@ namespace kill;
 /// </summary>
 public class ProcessWithUser : Process
 {
+    private static readonly HashSet<string> SystemOwnerSids = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // LocalSystem, LocalService, NetworkService
+        "S-1-5-18", "S-1-5-19", "S-1-5-20"
+    };
+
     private readonly Process _inner;
+
     /// <summary>
     /// The user name (without domain) that owns the process, if available.
     /// </summary>
@@ -21,6 +29,16 @@ public class ProcessWithUser : Process
     /// The domain (or machine name) for the user that owns the process, if available.
     /// </summary>
     public string? Domain { get; }
+
+    /// <summary>
+    /// The Windows Security Identifier (SID) of the account that owns the process, if available.
+    /// </summary>
+    public string? OwnerSid { get; }
+
+    /// <summary>
+    /// True if the process is owned by a well-known system account (LocalSystem, LocalService, NetworkService).
+    /// </summary>
+    public bool IsSystemProcess { get; }
 
     /// <summary>
     /// Convenience property combining Domain and User (e.g., DOMAIN\User) when available.
@@ -50,6 +68,8 @@ public class ProcessWithUser : Process
         if (pid > 0)
         {
             (Domain, User) = TryGetOwner(pid);
+            OwnerSid = TryGetOwnerSid(pid);
+            IsSystemProcess = OwnerSid is not null && SystemOwnerSids.Contains(OwnerSid);
         }
     }
  
@@ -64,6 +84,8 @@ public class ProcessWithUser : Process
          if (processId > 0)
          {
              (Domain, User) = TryGetOwner(processId);
+             OwnerSid = TryGetOwnerSid(processId);
+             IsSystemProcess = OwnerSid is not null && SystemOwnerSids.Contains(OwnerSid);
          }
      }
 
@@ -94,6 +116,34 @@ public class ProcessWithUser : Process
             // Swallow exceptions: access denied, process exited, WMI not available, etc.
         }
         return (null, null);
+    }
+
+    /// <summary>
+    /// Tries to get the owner SID for a process id using WMI (Win32_Process.GetOwnerSid).
+    /// Returns null if it cannot be determined (access denied or process exited).
+    /// </summary>
+    public static string? TryGetOwnerSid(int pid)
+    {
+        try
+        {
+#pragma warning disable CA1416 // Validate platform compatibility
+            using var proc = new ManagementObject($"win32_process.handle='{pid}'");
+            using var outParams = proc.InvokeMethod("GetOwnerSid", null, null);
+            if (outParams is ManagementBaseObject mbo)
+            {
+                var sid = mbo["Sid"]?.ToString();
+                if (!string.IsNullOrWhiteSpace(sid))
+                {
+                    return sid;
+                }
+            }
+#pragma warning restore CA1416
+        }
+        catch
+        {
+            // Swallow exceptions: access denied, process exited, WMI not available, etc.
+        }
+        return null;
     }
 
     // Expose the wrapped process for advanced scenarios

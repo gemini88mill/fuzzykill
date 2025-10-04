@@ -65,6 +65,10 @@ public static class Logger
         {
             line += $" [cyan]{mUser}[/]";
         }
+        if (p.IsSystemProcess)
+        {
+            line += " [bold red]SYSTEM[/]";
+        }
 
         AnsiConsole.Write(new Markup(line + Environment.NewLine));
     }
@@ -114,7 +118,7 @@ public static class Logger
             var mUser = Markup.Escape(user);
 
             var pidCell = new Markup($"[grey]{mPid}[/]");
-            var nameCell = new Markup(mName);
+            var nameCell = new Markup(mName + (p.IsSystemProcess ? " [bold red]SYSTEM[/]" : string.Empty));
             var titleCell = new Markup(string.IsNullOrWhiteSpace(mTitle) ? string.Empty : $"[dim]{mTitle}[/]");
             var userCell = new Markup(string.IsNullOrWhiteSpace(mUser) ? string.Empty : $"[cyan]{mUser}[/]");
 
@@ -170,7 +174,8 @@ public static class Logger
                 var mUser = Markup.Escape(user);
                 var label = $"[grey]{mPid,6}[/] [white]{mName}[/]" +
                             (string.IsNullOrWhiteSpace(mTitle) ? string.Empty : $" [dim]{mTitle}[/]") +
-                            (string.IsNullOrWhiteSpace(mUser) ? string.Empty : $" [cyan]{mUser}[/]");
+                            (string.IsNullOrWhiteSpace(mUser) ? string.Empty : $" [cyan]{mUser}[/]") +
+                            (p.IsSystemProcess ? " [bold red]SYSTEM[/]" : string.Empty);
                 choices.Add(ChoiceItem.ForProcess(label, p));
             }
         }
@@ -267,7 +272,7 @@ public static class Logger
     // Shows a status spinner while running a synchronous operation.
     public static void ShowStatus(string message, Action operation, string? successMessage = null)
     {
-        if (operation is null) throw new ArgumentNullException(nameof(operation));
+        ArgumentNullException.ThrowIfNull(operation);
         var safe = Markup.Escape(message ?? "Working...");
         try
         {
@@ -288,7 +293,7 @@ public static class Logger
     // Async overload for operations returning a Task.
     public static async Task ShowStatus(string message, Func<Task> operation, string? successMessage = null)
     {
-        if (operation is null) throw new ArgumentNullException(nameof(operation));
+        ArgumentNullException.ThrowIfNull(operation);
         var safe = Markup.Escape(message ?? "Working...");
         try
         {
