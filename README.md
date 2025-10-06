@@ -39,9 +39,8 @@ dotnet run --project .\kill -- <query> [options]
 
 - query (required): Text to match against process name and command line
 - -r, --regex: Treat query as a .NET regex pattern (case-insensitive)
-- -f, --force: Reserved for future use (force kill without confirmation)
+- -f, --force: Bypass interactive selection (select all matches); when kill is implemented, skip confirmation
 - -d, --details: Reserved for future use (show additional details)
-- -i, --interactive: Reserved for future use (interactive picker)
 
 Example:
 
@@ -76,7 +75,7 @@ Regex mode bypasses fuzzy scoring and simply includes any items that match the r
 
 ## Roadmap ideas
 
-- Implement interactive picker (-i) with filtering and multi-select
+- Enhance the interactive picker with filtering and multi-select
 - Add confirmation and --force kill logic
 - Rich console output (colors, columns)
 - Unit tests

@@ -10,7 +10,7 @@ public static class Logger
     {
         var safe = Markup.Escape(message);
         var content = colorTag is null ? safe : $"[{colorTag}]{safe}[/]";
-        AnsiConsole.Write(new Markup(content + System.Environment.NewLine));
+        AnsiConsole.Write(new Markup(content + Environment.NewLine));
     }
 
     public static void Info(string message)

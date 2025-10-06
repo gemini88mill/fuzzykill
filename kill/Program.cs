@@ -17,23 +17,12 @@ var useRegex = new Option<bool>("--regex", "-r")
     Description = "use regex to match processes"
 };
 
-var details = new Option<bool>("--details", "-d")
-{
-    Description = "Show details about the matched processes"
-};
-
-var interactive = new Option<bool>("--interactive", "-i")
-{
-    Description = "Select processes interactively"
-};
 
 
 var root = new RootCommand("Fuzzy process killer CLI");
 root.Add(query);
 root.Add(force);
 root.Add(useRegex);
-root.Add(details);
-root.Add(interactive);
 
 
 root.SetAction(parseResult =>
@@ -44,10 +33,19 @@ root.SetAction(parseResult =>
 
     IEnumerable<ProcessWithUser> processWithUsers = [];
     Logger.ShowStatus("Getting processes...", () => { processWithUsers = processManager.Discover(queryRes).ToList(); });
-    // var results = processManager.Discover(queryRes);
 
-    var selection = Logger.SelectProcesses(processWithUsers);
-    
+    var isForce = parseResult.GetValue(force);
+    IReadOnlyList<ProcessWithUser> selection;
+    if (isForce)
+    {
+        // Bypass interactive selection when --force is supplied
+        selection = processWithUsers.ToList();
+    }
+    else
+    {
+        selection = Logger.SelectProcesses(processWithUsers);
+    }
+
     Console.WriteLine($"Selected {selection.Count} processes.");
     foreach (var item in selection)
     {
