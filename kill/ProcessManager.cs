@@ -196,4 +196,78 @@ public class ProcessManager
         try { return getter(); }
         catch { return default; }
     }
+
+    /// <summary>
+    /// Attempts to kill the given process. Returns 0 on success, 1 on error.
+    /// This method is exception-safe and will not throw.
+    /// </summary>
+    public int Kill(Process process)
+    {
+        try
+        {
+            if (process is null) return 1;
+
+            // Refresh to get the latest state; ignore failures.
+            try { process.Refresh(); } catch { /* ignore */ }
+
+            if (SafeGet(() => process.HasExited) == true)
+            {
+                return 0; // already exited - treat as success
+            }
+
+            // Try to terminate the process.
+            // We don't kill the entire process tree by default to keep behavior minimal.
+            process.Kill();
+
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            // Best-effort logging; ignore failures writing logs.
+            try
+            {
+                var pid = SafeGet(() => process?.Id) ?? -1;
+                Logger.Error($"Failed to kill process PID={pid}: {ex.Message}");
+            }
+            catch { /* ignore logging failures */ }
+            return 1;
+        }
+    }
+
+    /// <summary>
+    /// Attempts to kill all given processes. Returns 0 if all succeed, 1 if any fails.
+    /// This method is exception-safe and will not throw.
+    /// </summary>
+    public int Kill(IEnumerable<Process> processes)
+    {
+        try
+        {
+            if (processes is null) return 1;
+
+            var result = 0;
+            foreach (var p in processes)
+            {
+                // allow null items gracefully
+                if (p is null)
+                {
+                    result = 1; // treat as failure but keep going
+                    continue;
+                }
+
+                var code = Kill(p);
+                if (code != 0)
+                {
+                    result = 1; // remember failure, continue best-effort
+                }
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            // Top-level safety net; log and signal failure
+            try { Logger.Error($"Failed to kill process set: {ex.Message}"); } catch { }
+            return 1;
+        }
+    }
 }

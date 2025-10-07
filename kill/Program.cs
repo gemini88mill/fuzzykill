@@ -32,7 +32,12 @@ root.SetAction(parseResult =>
     if (queryRes == null) return 0;
 
     IEnumerable<ProcessWithUser> processWithUsers = [];
-    Logger.ShowStatus("Getting processes...", () => { processWithUsers = processManager.Discover(queryRes).ToList(); });
+    var isRegex = parseResult.GetValue(useRegex);
+    Logger.ShowStatus("Getting processes...", () =>
+    {
+        processWithUsers = processManager.Discover(queryRes, isRegex).ToList();
+        Console.WriteLine();
+    });
 
     var isForce = parseResult.GetValue(force);
     IReadOnlyList<ProcessWithUser> selection;
@@ -46,13 +51,7 @@ root.SetAction(parseResult =>
         selection = Logger.SelectProcesses(processWithUsers);
     }
 
-    Console.WriteLine($"Selected {selection.Count} processes.");
-    foreach (var item in selection)
-    {
-        Console.WriteLine(item.ProcessName);
-    }
-
-    return 0;
+    return processManager.Kill(selection);
 });
 
 var result = root.Parse(args);
